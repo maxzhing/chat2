@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ChatGPT 2.0 — School & Life AI</title>
+<meta name="description" content="A single-file AI assistant powered by OpenRouter.">
+<style>
+:root{
+  --bg:#0b0d12; --panel:#11151c; --panel2:#171c25; --panel3:#1d2430;
+  --text:#eef2f7; --muted:#9ba7b7; --border:#283140; --accent:#7c5cff;
+  --accent2:#19c37d; --danger:#ff5f6d; --shadow:0 18px 60px rgba(0,0,0,.35);
+  --radius:16px; --sidebar:280px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+button,input,textarea,select{font:inherit}
+button{cursor:pointer}
+.app{display:flex;height:100vh;overflow:hidden}
+.sidebar{width:var(--sidebar);min-width:var(--sidebar);background:#0f1319;border-right:1px solid var(--border);display:flex;flex-direction:column}
+.brand{padding:18px 16px 12px;display:flex;align-items:center;gap:10px}
+.logo{width:36px;height:36px;border-radius:12px;background:linear-gradient(135deg,#8b6cff,#48d5a0);display:grid;place-items:center;font-weight:900;color:white;box-shadow:0 8px 24px rgba(124,92,255,.28)}
+.brand b{font-size:15px}
+.brand small{display:block;color:var(--muted);font-size:11px;margin-top:2px}
+.newchat{margin:8px 12px 10px;padding:11px 12px;border:1px solid var(--border);border-radius:12px;background:var(--panel2);color:var(--text);display:flex;align-items:center;gap:9px}
+.newchat:hover,.sidebtn:hover,.chip:hover,.composer button:hover{border-color:#405067;background:var(--panel3)}
+.side-search{margin:0 12px 9px}
+.side-search input{width:100%;padding:9px 11px;border-radius:10px;border:1px solid var(--border);background:#0c1016;color:var(--text);outline:none}
+.history{flex:1;overflow:auto;padding:4px 8px 10px}
+.chat-item{padding:9px 10px;border-radius:10px;color:#ccd4df;display:flex;align-items:center;gap:9px;margin-bottom:2px}
+.chat-item:hover{background:#161c24}
+.chat-item.active{background:#1b2330;color:white}
+.chat-title{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13px;flex:1}
+.chat-del{opacity:0;border:0;background:none;color:var(--muted);font-size:14px}
+.chat-item:hover .chat-del{opacity:1}
+.sidebar-bottom{padding:8px;border-top:1px solid var(--border)}
+.sidebtn{width:100%;padding:9px 10px;border:1px solid transparent;background:transparent;color:#cbd5e1;border-radius:10px;text-align:left}
+.main{flex:1;min-width:0;display:flex;flex-direction:column}
+.topbar{height:64px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 18px;gap:14px;background:rgba(11,13,18,.82);backdrop-filter:blur(12px)}
+.top-left{display:flex;align-items:center;gap:9px;min-width:0}
+.mobile-menu{display:none}
+.model-select{background:var(--panel2);color:var(--text);border:1px solid var(--border);border-radius:10px;padding:8px 10px;max-width:270px}
+.status{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.dot{width:7px;height:7px;border-radius:50%;background:#778396}
+.dot.ok{background:var(--accent2);box-shadow:0 0 10px rgba(25,195,125,.55)}
+.dot.bad{background:var(--danger)}
+.top-actions{display:flex;gap:7px}
+.iconbtn{width:36px;height:36px;border-radius:10px;border:1px solid var(--border);background:var(--panel);color:#cbd5e1}
+.iconbtn:hover{background:var(--panel2)}
+.chatwrap{flex:1;overflow:auto}
+.chat{width:min(920px,100%);margin:0 auto;padding:28px 22px 170px}
+.welcome{min-height:54vh;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center}
+.welcome h1{font-size:clamp(30px,5vw,52px);margin:0 0 10px;letter-spacing:-1.7px}
+.gradient{background:linear-gradient(110deg,#fff,#a58cff 45%,#6fe0b5);-webkit-background-clip:text;background-clip:text;color:transparent}
+.welcome p{color:var(--muted);max-width:650px;line-height:1.6;margin:0 0 22px}
+.quickgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;width:min(820px,100%)}
+.quick{padding:14px;border:1px solid var(--border);background:var(--panel);border-radius:14px;color:var(--text);text-align:left}
+.quick strong{display:block;font-size:13px;margin-bottom:5px}
+.quick span{font-size:11px;color:var(--muted)}
+.msg{display:flex;gap:13px;padding:18px 0}
+.avatar{width:30px;height:30px;border-radius:10px;flex:0 0 30px;display:grid;place-items:center;font-size:11px;font-weight:800}
+.user .avatar{background:#2a3140}.assistant .avatar{background:linear-gradient(135deg,#7c5cff,#2fcf9a)}
+.msg-body{min-width:0;flex:1;line-height:1.65}
+.msg-meta{display:flex;align-items:center;gap:8px;margin:1px 0 5px;font-size:12px;color:var(--muted)}
+.msg-copy{font-size:15px;overflow-wrap:anywhere}
+.msg-copy pre{background:#090c11;border:1px solid #26303d;padding:13px;border-radius:12px;overflow:auto}
+.msg-copy code{font-family:"SFMono-Regular",Consolas,monospace;font-size:13px}
+.inline-code{background:#202733;border:1px solid #2c3746;border-radius:6px;padding:1px 5px}
+.msg-copy h1,.msg-copy h2,.msg-copy h3{line-height:1.25}
+.msg-copy table{border-collapse:collapse;width:100%;margin:12px 0}
+.msg-copy th,.msg-copy td{border:1px solid var(--border);padding:7px;text-align:left}
+.msg-actions{display:flex;gap:5px;margin-top:7px}
+.mini{border:0;background:transparent;color:#7f8ba0;font-size:11px;padding:4px}
+.mini:hover{color:white}
+.typing{display:inline-flex;gap:4px}
+.typing i{width:6px;height:6px;border-radius:50%;background:#aeb7c6;animation:bounce .9s infinite}
+.typing i:nth-child(2){animation-delay:.12s}.typing i:nth-child(3){animation-delay:.24s}
+@keyframes bounce{0%,70%,100%{transform:translateY(0);opacity:.45}35%{transform:translateY(-4px);opacity:1}}
+.composer-wrap{position:fixed;left:var(--sidebar);right:0;bottom:0;background:linear-gradient(to top,var(--bg) 78%,transparent);padding:16px 20px 18px;pointer-events:none}
+.composer-area{width:min(920px,100%);margin:auto;pointer-events:auto}
+.mode-row{display:flex;gap:7px;overflow:auto;padding:0 2px 9px}
+.chip{white-space:nowrap;border:1px solid var(--border);background:var(--panel);color:#adb8c8;border-radius:999px;padding:6px 10px;font-size:11px}
+.chip.active{background:#26203f;border-color:#5d48a6;color:#d9d0ff}
+.composer{background:#151a22;border:1px solid #303948;border-radius:18px;box-shadow:var(--shadow);padding:10px}
+.attachments{display:flex;gap:6px;flex-wrap:wrap;padding:0 2px 6px}
+.filepill{font-size:11px;padding:4px 8px;border:1px solid var(--border);border-radius:8px;background:#10151c;color:#bdc7d5}
+textarea{width:100%;resize:none;min-height:54px;max-height:180px;background:transparent;border:0;outline:0;color:var(--text);padding:8px 8px 4px;font-size:15px;line-height:1.5}
+.composer-bottom{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 2px 0}
+.toolgroup{display:flex;gap:4px;align-items:center}
+.toolbtn{width:36px;height:34px;border:1px solid transparent;background:transparent;color:#95a2b4;border-radius:10px}
+.toolbtn:hover{background:#222a35;color:white}
+.send{width:40px;height:36px;border:0;border-radius:10px;background:white;color:#0c0f14;font-weight:900}
+.send:disabled{opacity:.4;cursor:not-allowed}
+.hint{font-size:10px;color:#687487}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.64);display:none;align-items:center;justify-content:center;padding:20px;z-index:20}
+.modal{width:min(620px,100%);background:#11161f;border:1px solid var(--border);border-radius:18px;box-shadow:var(--shadow);padding:20px}
+.modal h2{margin:0 0 6px;font-size:20px}.modal p{color:var(--muted);font-size:13px;line-height:1.55}
+.field{margin-top:12px}.field label{display:block;font-size:12px;color:#b7c1cf;margin:0 0 6px}
+.field input,.field select{width:100%;padding:11px 12px;background:#0a0e13;color:var(--text);border:1px solid var(--border);border-radius:10px;outline:none}
+.row{display:flex;gap:9px;justify-content:flex-end;margin-top:15px}
+.btn{padding:10px 13px;border-radius:10px;border:1px solid var(--border);background:var(--panel2);color:var(--text)}
+.btn.primary{background:white;color:#0a0d12;border-color:white}
+.notice{padding:10px 12px;border-radius:10px;background:#1a2330;border:1px solid #2b3a4d;color:#bdc8d6;font-size:11px;line-height:1.45}
+.dropzone{border:1px dashed #3b4656;border-radius:12px;padding:15px;text-align:center;color:#8895a8;font-size:12px;margin-top:10px}
+.empty{color:#6f7b8e;text-align:center;padding:25px 10px;font-size:12px}
+.toast{position:fixed;right:18px;top:80px;padding:10px 13px;background:#e9eef5;color:#0b0e13;border-radius:11px;font-size:12px;font-weight:700;display:none;z-index:40;box-shadow:var(--shadow)}
+.switch{display:flex;gap:8px;align-items:center;color:#bec8d5;font-size:12px}
+.switch input{accent-color:var(--accent)}
+@media(max-width:900px){
+  :root{--sidebar:0px}.sidebar{position:fixed;z-index:15;left:-280px;top:0;bottom:0;width:280px;transition:.2s;box-shadow:var(--shadow)}
+  .sidebar.open{left:0}.mobile-menu{display:inline-grid}.composer-wrap{left:0}.quickgrid{grid-template-columns:repeat(2,1fr)}
+}
+@media(max-width:580px){
+  .topbar{padding:0 10px}.chat{padding-left:14px;padding-right:14px}.model-select{max-width:170px}
+  .welcome{min-height:48vh}.quickgrid{grid-template-columns:1fr 1fr}.composer-wrap{padding-left:9px;padding-right:9px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <div class="logo">2</div>
+      <div><b>ChatGPT 2.0</b><small>School + life copilot</small></div>
+    </div>
+    <button class="newchat" onclick="newChat()">＋ <span>New chat</span></button>
+    <div class="side-search"><input id="searchChats" placeholder="Search chats…" oninput="renderHistory()"></div>
+    <div class="history" id="history"></div>
+    <div class="sidebar-bottom">
+      <button class="sidebtn" onclick="openSettings()">⚙ Settings</button>
+      <button class="sidebtn" onclick="exportChat()">⇩ Export current chat</button>
+      <button class="sidebtn" onclick="clearAllData()">⌫ Clear local data</button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div class="top-left">
+        <button class="iconbtn mobile-menu" onclick="toggleSidebar()">☰</button>
+        <select class="model-select" id="modelSelect" onchange="savePrefs()">
+          <option value="openrouter/free">Auto · OpenRouter Free Router</option>
+          <option value="nvidia/nemotron-3-ultra-550b-a55b:free">Nemotron 3 Ultra · Free</option>
+          <option value="nvidia/nemotron-3.5-lightning:free">Nemotron 3.5 Lightning · Free</option>
+        </select>
+        <div class="status"><span id="statusDot" class="dot"></span><span id="statusText">API key not set</span></div>
+      </div>
+      <div class="top-actions">
+        <button class="iconbtn" title="Settings" onclick="openSettings()">⚙</button>
+      </div>
+    </header>
+
+    <div class="chatwrap" id="chatwrap">
+      <section class="chat" id="chat"></section>
+    </div>
+
+    <div class="composer-wrap">
+      <div class="composer-area">
+        <div class="mode-row" id="modeRow"></div>
+        <div class="composer">
+          <div class="attachments" id="attachments"></div>
+          <textarea id="input" placeholder="Ask anything about school, coding, writing, math, science, or life…" rows="1"></textarea>
+          <div class="composer-bottom">
+            <div class="toolgroup">
+              <input id="fileInput" type="file" multiple hidden accept=".txt,.md,.csv,.json,.js,.java,.py,.html,.css,.xml,.yaml,.yml,.log,image/*">
+              <button class="toolbtn" onclick="document.getElementById('fileInput').click()" title="Attach file">📎</button>
+              <button class="toolbtn" onclick="insertPrompt('Give me a ruthless but fair critique of my work. Find the weakest assumption first.')" title="Critique">◈</button>
+              <button class="toolbtn" onclick="insertPrompt('Teach this from first principles, then quiz me with one question at a time.')" title="Teach">◎</button>
+            </div>
+            <div class="hint">Enter to send · Shift+Enter for newline</div>
+            <button class="send" id="sendBtn" onclick="sendMessage()">↑</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div class="overlay" id="settingsOverlay" onclick="if(event.target===this)closeSettings()">
+  <div class="modal">
+    <h2>Settings</h2>
+    <p>Your API key is stored only in this browser's local storage. The page sends requests directly to OpenRouter from your browser.</p>
+    <div class="notice">OpenRouter currently offers free model endpoints, but free models are rate-limited and availability can change. Never paste a secret you cannot safely store in this browser.</div>
+
+    <div class="field">
+      <label>OpenRouter API key</label>
+      <input id="apiKey" type="password" placeholder="sk-or-v1-…">
+    </div>
+
+    <div class="field">
+      <label>Student profile (optional — used only to improve prompts)</label>
+      <input id="profile" placeholder="Example: 9th grade • AP CSP • AP Gov • Honors Chemistry • piano">
+    </div>
+
+    <div class="field">
+      <label>Response style</label>
+      <select id="styleSelect">
+        <option value="mentor">Ruthless mentor — challenge assumptions and expose weak reasoning</option>
+        <option value="balanced">Balanced — clear, direct, supportive</option>
+        <option value="teacher">Teacher — step-by-step instruction and checks</option>
+        <option value="concise">Concise — answer efficiently with minimal fluff</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label class="switch"><input id="webMode" type="checkbox"> Treat current/fresh facts as requiring verification (the app itself does not browse)</label>
+    </div>
+
+    <div class="dropzone">Tip: attach notes, code, text, or an image. The assistant will receive the contents in the current chat.</div>
+
+    <div class="row">
+      <button class="btn" onclick="closeSettings()">Cancel</button>
+      <button class="btn" onclick="openRouterKeys()">Get an OpenRouter key ↗</button>
+      <button class="btn primary" onclick="saveSettings()">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="welcomeOverlay" onclick="if(event.target===this)closeWelcome()">
+  <div class="modal">
+    <h2>Welcome to ChatGPT 2.0</h2>
+    <p>Paste your OpenRouter key once, then this file works as a standalone AI chat app. There is no backend to install.</p>
+    <div class="notice">OpenRouter says creating a key does not require a subscription or card to start. Free endpoints are still subject to their current limits.</div>
+    <div class="field"><label>OpenRouter API key</label><input id="welcomeKey" type="password" placeholder="sk-or-v1-…"></div>
+    <div class="row"><button class="btn" onclick="closeWelcome()">Later</button><button class="btn primary" onclick="saveWelcomeKey()">Start chatting</button></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const APP_KEY = "chatgpt2_local_v1";
+const MODES = [
+  ["Tutor","Teach concepts, reveal misconceptions, and quiz me."],
+  ["Homework","Help me solve schoolwork accurately and explain the reasoning."],
+  ["Writing","Improve structure, evidence, clarity, grammar, and argumentation."],
+  ["Coding","Debug, explain, design, and test code; point out edge cases."],
+  ["Study Plan","Turn material into a concrete study sequence and retrieval practice."],
+  ["General","Handle normal questions and practical tasks."]
+];
+
+const BASE_SYSTEM = `
+You are ChatGPT 2.0, a high-precision AI assistant for a student.
+Your job is to be useful, accurate, intellectually honest, and efficient.
+Do not blindly validate the user. Challenge weak assumptions, identify missing information,
+separate facts from guesses, and explain why an answer works.
+For schoolwork, prioritize understanding, reasoning, and checking over empty verbosity.
+When solving quantitative problems: state givens, choose a method, calculate carefully, check units/signs,
+and give the final answer clearly. When explaining code: identify the exact bug or design issue, then give a corrected version.
+For writing: preserve the student's voice unless asked to rewrite, and distinguish evidence from interpretation.
+Never claim certainty when you have not verified something. When current information matters, explicitly say it
+needs fresh verification rather than inventing a current fact.
+Use clean headings and compact formatting. Avoid repetitive filler.
+`;
+let state = loadState();
+let currentId = state.currentId || null;
+let attached = [];
+
+function defaultState(){
+  return {settings:{apiKey:"",profile:"",style:"mentor",webMode:false,model:"openrouter/free"}, chats:[], currentId:null};
+}
+function loadState(){
+  try { return Object.assign(defaultState(), JSON.parse(localStorage.getItem(APP_KEY) || "{}")); }
+  catch(e){ return defaultState(); }
+}
+function persist(){ localStorage.setItem(APP_KEY, JSON.stringify(state)); }
+function uid(){ return "c_"+Date.now()+"_"+Math.random().toString(36).slice(2,8); }
+
+function modeText(mode){
+  const x = MODES.find(v=>v[0]===mode);
+  return x ? x[1] : MODES[0][1];
+}
+function styleText(){
+  const s = state.settings.style;
+  if(s==="mentor") return "Use a ruthless-but-fair mentor style: challenge assumptions, expose weak reasoning, and do not praise weak work just to be nice.";
+  if(s==="teacher") return "Use a teacher style: build from first principles, check understanding, and ask short retrieval questions when useful.";
+  if(s==="concise") return "Be concise and direct. Keep explanations compact unless more detail is necessary for correctness.";
+  return "Use a balanced style: direct, calm, clear, and supportive.";
+}
+function systemPrompt(mode){
+  return BASE_SYSTEM + "\nCurrent mode: " + mode + " — " + modeText(mode) + "\n" + styleText() +
+    (state.settings.profile ? "\nStudent profile (context only): " + state.settings.profile : "") +
+    (state.settings.webMode ? "\nFreshness rule: do not present possibly time-sensitive facts as current without noting that they require verification." : "");
+}
+
+function savePrefs(){
+  state.settings.model = document.getElementById("modelSelect").value;
+  persist(); updateStatus();
+}
+function updateStatus(){
+  const has = !!state.settings.apiKey;
+  document.getElementById("statusDot").className = "dot " + (has?"ok":"bad");
+  document.getElementById("statusText").textContent = has ? "Ready" : "API key not set";
+}
+function openSettings(){
+  document.getElementById("apiKey").value=state.settings.apiKey||"";
+  document.getElementById("profile").value=state.settings.profile||"";
+  document.getElementById("styleSelect").value=state.settings.style||"mentor";
+  document.getElementById("webMode").checked=!!state.settings.webMode;
+  document.getElementById("settingsOverlay").style.display="flex";
+}
+function closeSettings(){document.getElementById("settingsOverlay").style.display="none"}
+function openRouterKeys(){ window.open("https://openrouter.ai/keys","_blank","noopener,noreferrer") }
+function saveSettings(){
+  state.settings.apiKey=document.getElementById("apiKey").value.trim();
+  state.settings.profile=document.getElementById("profile").value.trim();
+  state.settings.style=document.getElementById("styleSelect").value;
+  state.settings.webMode=document.getElementById("webMode").checked;
+  persist(); updateStatus(); closeSettings(); toast("Settings saved");
+}
+function saveWelcomeKey(){
+  const k=document.getElementById("welcomeKey").value.trim();
+  if(k){state.settings.apiKey=k;persist();updateStatus();}
+  closeWelcome();
+}
+function closeWelcome(){document.getElementById("welcomeOverlay").style.display="none"}
+
+function newChat(){
+  const c={id:uid(),title:"New chat",mode:"Tutor",messages:[],created:Date.now(),updated:Date.now()};
+  state.chats.unshift(c); currentId=c.id; state.currentId=currentId; persist(); renderAll();
+  if(window.innerWidth<900) document.getElementById("sidebar").classList.remove("open");
+}
+function getCurrent(){
+  let c=state.chats.find(x=>x.id===currentId);
+  if(!c){newChat(); c=state.chats.find(x=>x.id===currentId)}
+  return c;
+}
+function setCurrent(id){currentId=id;state.currentId=id;persist();renderAll()}
+function renderHistory(){
+  const q=(document.getElementById("searchChats").value||"").toLowerCase().trim();
+  const list=document.getElementById("history");
+  const filtered=state.chats.filter(c=>c.title.toLowerCase().includes(q));
+  list.innerHTML=filtered.length?filtered.map(c=>`<div class="chat-item ${c.id===currentId?'active':''}" onclick="setCurrent('${c.id}')">
+    <span>◌</span><div class="chat-title">${escapeHtml(c.title)}</div>
+    <button class="chat-del" onclick="deleteChat(event,'${c.id}')">×</button>
+  </div>`).join(""):`<div class="empty">No chats yet.<br>Start a new one.</div>`;
+}
+function deleteChat(e,id){
+  e.stopPropagation();
+  state.chats=state.chats.filter(c=>c.id!==id);
+  if(currentId===id){currentId=state.chats[0]?.id||null;state.currentId=currentId}
+  persist();renderAll();
+}
+function clearAllData(){
+  if(confirm("Clear every chat, setting, and saved API key from this browser?")){
+    localStorage.removeItem(APP_KEY); state=defaultState(); currentId=null; attached=[]; renderAll(); updateStatus(); toast("Local data cleared");
+  }
+}
+
+function renderModes(){
+  const c=getCurrent(); 
+  document.getElementById("modeRow").innerHTML=MODES.map(m=>`<button class="chip ${c.mode===m[0]?'active':''}" onclick="changeMode('${m[0]}')">${m[0]}</button>`).join("");
+}
+function changeMode(mode){getCurrent().mode=mode;getCurrent().updated=Date.now();persist();renderModes()}
+function renderAll(){renderHistory();renderModes();renderChat();document.getElementById("modelSelect").value=state.settings.model||"openrouter/free";updateStatus()}
+function renderChat(){
+  const wrap=document.getElementById("chat"), c=getCurrent();
+  if(!c.messages.length){
+    wrap.innerHTML=`<div class="welcome">
+      <h1>Meet <span class="gradient">ChatGPT 2.0</span></h1>
+      <p>A single-file AI copilot for schoolwork, coding, writing, studying, research-style thinking, and everyday questions. Bring the problem; it will bring the reasoning.</p>
+      <div class="quickgrid">
+        <button class="quick" onclick="quick('Teach me this concept from first principles: ')"><strong>◎ Learn</strong><span>Understand instead of memorizing.</span></button>
+        <button class="quick" onclick="quick('Solve this problem and show every important step: ')"><strong>∑ Solve</strong><span>Math, physics, chemistry, and more.</span></button>
+        <button class="quick" onclick="quick('Debug this code. Identify the bug, explain why it happens, then fix it: ')"><strong>⌘ Code</strong><span>Java, Python, JavaScript, HTML/CSS.</span></button>
+        <button class="quick" onclick="quick('Critique this work brutally but fairly. Find the weakest part and show how to improve it: ')"><strong>◈ Critique</strong><span>Essays, answers, arguments, projects.</span></button>
+      </div>
+    </div>`;
+    return;
+  }
+  wrap.innerHTML=c.messages.map((m,i)=>messageHtml(m,i)).join("");
+  wrap.querySelectorAll("[data-copy]").forEach(b=>b.onclick=()=>copyText(c.messages[Number(b.dataset.copy)].content));
+  wrap.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>editMessage(Number(b.dataset.edit)));
+  setTimeout(()=>{document.getElementById("chatwrap").scrollTop=document.getElementById("chatwrap").scrollHeight},0);
+}
+function messageHtml(m,i){
+  const isUser=m.role==="user";
+  return `<div class="msg ${isUser?'user':'assistant'}">
+    <div class="avatar">${isUser?'YOU':'2'}</div>
+    <div class="msg-body">
+      <div class="msg-meta"><b>${isUser?'You':'ChatGPT 2.0'}</b><span>·</span><span>${m.mode||''}</span></div>
+      <div class="msg-copy">${renderMarkdown(m.content)}</div>
+      <div class="msg-actions"><button class="mini" data-copy="${i}">Copy</button>${isUser?'<button class="mini" data-edit="'+i+'">Edit & resend</button>':''}</div>
+    </div>
+  </div>`;
+}
+
+function renderMarkdown(s){
+  s=escapeHtml(s||"");
+  s=s.replace(/```([\s\S]*?)```/g,(m,code)=>`<pre><code>${code.trim()}</code></pre>`);
+  s=s.replace(/`([^`]+)`/g,'<span class="inline-code">$1</span>');
+  s=s.replace(/^### (.*)$/gm,'<h3>$1</h3>').replace(/^## (.*)$/gm,'<h2>$1</h2>').replace(/^# (.*)$/gm,'<h1>$1</h1>');
+  s=s.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\*(.+?)\*/g,'<em>$1</em>');
+  s=s.replace(/^\s*[-•] (.*)$/gm,'<li>$1</li>');
+  s=s.replace(/(<li>.*<\/li>\n?)+/g,x=>"<ul>"+x+"</ul>");
+  s=s.replace(/\n\n/g,'<br><br>').replace(/\n/g,'<br>');
+  return s;
+}
+function escapeHtml(x){return String(x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]))}
+function copyText(t){navigator.clipboard?.writeText(t);toast("Copied")}
+function editMessage(i){
+  const c=getCurrent(), m=c.messages[i];
+  if(!m||m.role!=="user")return;
+  document.getElementById("input").value=m.content;
+  c.messages=c.messages.slice(0,i);
+  persist();renderChat();autoGrow();document.getElementById("input").focus();
+}
+function insertPrompt(t){
+  const el=document.getElementById("input"); el.value=el.value?el.value+"\n\n"+t:t; autoGrow();el.focus();
+}
+function quick(t){insertPrompt(t)}
+
+document.getElementById("input").addEventListener("keydown",e=>{
+  if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendMessage()}
+  autoGrow()
+});
+document.getElementById("input").addEventListener("input",autoGrow);
+function autoGrow(){const x=document.getElementById("input");x.style.height="auto";x.style.height=Math.min(x.scrollHeight,180)+"px"}
+
+document.getElementById("fileInput").addEventListener("change", async e=>{
+  for(const f of [...e.target.files]){
+    if(f.size>5*1024*1024){toast(f.name+" is over 5 MB");continue}
+    const pill={name:f.name,type:f.type,size:f.size,data:null,text:null};
+    if(f.type.startsWith("image/")){
+      pill.data=await readDataUrl(f);
+    }else{
+      try{pill.text=await f.text()}catch(err){pill.text="[Could not read this file in the browser]"}
+    }
+    attached.push(pill);
+  }
+  renderAttachments(); e.target.value="";
+});
+function readDataUrl(f){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(f)})}
+function renderAttachments(){
+  document.getElementById("attachments").innerHTML=attached.map((f,i)=>`<span class="filepill">${escapeHtml(f.name)} <button style="border:0;background:none;color:#9da8b7" onclick="attached.splice(${i},1);renderAttachments()">×</button></span>`).join("");
+}
+
+async function sendMessage(){
+  const input=document.getElementById("input"), text=input.value.trim();
+  if(!text && !attached.length)return;
+  if(!state.settings.apiKey){openSettings();toast("Add your OpenRouter API key first");return}
+  const c=getCurrent();
+  window.__lastSentImages=(attached||[]).filter(f=>f.data).map(f=>f.data);
+  const mode=c.mode;
+  let content=text;
+  if(attached.length){
+    content += (content?"\n\n":"") + attached.filter(f=>f.text!==null).map(f=>`[Attached file: ${f.name}]\n${f.text}`).join("\n\n");
+  }
+  const userMsg={role:"user",content,mode};
+  c.messages.push(userMsg); c.updated=Date.now();
+  if(c.title==="New chat"){
+    c.title=text.replace(/\s+/g," ").slice(0,55)||"Attachment chat";
+  }
+  input.value=""; attached=[]; renderAttachments(); autoGrow(); persist(); renderAll();
+  await callModel(c);
+}
+
+function buildApiMessages(c){
+  return [
+    {role:"system",content:systemPrompt(c.mode)},
+    ...c.messages.map(m=>{
+      // Convert an image attachment marker back into plain history; real images can be sent only from the latest turn.
+      return {role:m.role,content:m.content}
+    })
+  ];
+}
+
+async function callModel(c){
+  const sendBtn=document.getElementById("sendBtn"); sendBtn.disabled=true;
+  const placeholder={role:"assistant",content:"",mode:c.mode,streaming:true};
+  c.messages.push(placeholder); renderChat();
+  const model=state.settings.model||"openrouter/free";
+  const last=c.messages[c.messages.length-2];
+  const bodyMessages=buildApiMessages(c);
+  // The placeholder assistant message is already in c.messages, so the latest user
+  // message is the item immediately before it.
+  const lastUserIndex=bodyMessages.length-2;
+
+  // Add multimodal image parts to the latest user message.
+  const requestImageSource=window.__lastSentImages||[];
+  if(requestImageSource.length && lastUserIndex>=1 && bodyMessages[lastUserIndex].role==="user"){
+    bodyMessages[lastUserIndex].content = [{type:"text",text:last.content}];
+    requestImageSource.forEach(x=>bodyMessages[lastUserIndex].content.push({type:"image_url",image_url:{url:x}}));
+    window.__lastSentImages=[];
+  }
+
+  try{
+    const res=await fetch("https://openrouter.ai/api/v1/chat/completions",{
+      method:"POST",
+      headers:{
+        "Authorization":"Bearer "+state.settings.apiKey,
+        "Content-Type":"application/json",
+        "HTTP-Referer":location.href,
+        "X-Title":"ChatGPT 2.0 — School & Life Copilot"
+      },
+      body:JSON.stringify({model, messages:bodyMessages, stream:true, temperature:.35})
+    });
+    if(!res.ok){
+      const t=await res.text();
+      throw new Error(`OpenRouter ${res.status}: ${t.slice(0,700)}`);
+    }
+    await streamResponse(res, placeholder);
+  }catch(err){
+    placeholder.content="**Connection error**\n\n"+err.message+"\n\nCheck your OpenRouter key, model availability, and browser network permissions.";
+    placeholder.streaming=false;
+  }finally{
+    c.updated=Date.now(); persist(); renderChat(); sendBtn.disabled=false;
+  }
+}
+async function streamResponse(res,msg){
+  const reader=res.body.getReader(), decoder=new TextDecoder();
+  let buffer="";
+  while(true){
+    const {value,done}=await reader.read();
+    if(done)break;
+    buffer+=decoder.decode(value,{stream:true});
+    const lines=buffer.split("\n"); buffer=lines.pop()||"";
+    for(const line of lines){
+      const s=line.trim();
+      if(!s.startsWith("data:"))continue;
+      const data=s.slice(5).trim();
+      if(data==="[DONE]")continue;
+      try{
+        const j=JSON.parse(data);
+        const delta=j.choices?.[0]?.delta?.content;
+        if(delta){msg.content+=delta; renderChat();}
+      }catch(e){}
+    }
+  }
+  msg.streaming=false;
+}
+function exportChat(){
+  const c=getCurrent();
+  const text=`# ${c.title}\n\n${c.messages.map(m=>`## ${m.role==="user"?"You":"ChatGPT 2.0"}\n\n${m.content}`).join("\n\n")}`;
+  const blob=new Blob([text],{type:"text/markdown"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=(c.title||"chat").replace(/[^\w\-]+/g,"_")+".md";a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+}
+function toggleSidebar(){document.getElementById("sidebar").classList.toggle("open")}
+document.addEventListener("keydown",e=>{
+  if((e.metaKey||e.ctrlKey) && e.key.toLowerCase()==="k"){e.preventDefault();document.getElementById("input").focus();}
+  if((e.metaKey||e.ctrlKey) && e.key.toLowerCase()==="n"){e.preventDefault();newChat();}
+});
+function toast(t){const x=document.getElementById("toast");x.textContent=t;x.style.display="block";clearTimeout(window.__toast);window.__toast=setTimeout(()=>x.style.display="none",1800)}
+
+function ensureFirstChat(){
+  if(!state.chats.length)newChat();
+  else if(!currentId || !state.chats.some(c=>c.id===currentId)){currentId=state.chats[0].id;state.currentId=currentId;persist()}
+}
+function start(){
+  ensureFirstChat();
+  document.getElementById("modelSelect").value=state.settings.model||"openrouter/free";
+  renderAll();
+  if(!state.settings.apiKey) document.getElementById("welcomeOverlay").style.display="flex";
+}
+start();
+</script>
+</body>
+</html>
